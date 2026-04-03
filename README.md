@@ -72,4 +72,4 @@ The `checklists/` directory contains review criteria loaded by sub-agents during
 
 ## Research
 
-The skills were built from extensive research into agentic coding best practices. See [docs/research/README.md](docs/research/README.md) for the full backstory, or start with [docs/research/00-synthesis.md](docs/research/00-synthesis.md) for the unified spec.
+The skills were built from extensive research into agentic coding best practices. See [docs/README.md](docs/README.md) for the full backstory, or start with [docs/00-synthesis.md](docs/00-synthesis.md) for the unified spec.

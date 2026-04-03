@@ -20,15 +20,15 @@ user when all tests pass or you're stuck.
 $ARGUMENTS
 
 This should be a skill name. Find the skill's entry in
-`docs/research/28-skill-map.md` for its spec. If an existing version
+`docs/28-skill-map.md` for its spec. If an existing version
 exists in `~/.claude/skills/{name}/SKILL.md`, read it as the starting
 point.
 
 Also read:
-- `docs/research/00-synthesis.md` — principles and pipeline
-- `docs/research/08-agent-skills-standard.md` — the SKILL.md format spec
-- `docs/research/24-skill-writing-craft.md` — how to write skills well
-- The relevant craft analysis docs (docs/research/20-25) for patterns
+- `docs/00-synthesis.md` — principles and pipeline
+- `docs/08-agent-skills-standard.md` — the SKILL.md format spec
+- `docs/24-skill-writing-craft.md` — how to write skills well
+- The relevant craft analysis docs (docs/20-25) for patterns
 
 ## Phase 1: Understand the Skill
 
