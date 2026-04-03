@@ -1,12 +1,11 @@
 ---
 name: design
 description: >-
-  Design the implementation for a defined feature. Use when a GitHub issue
-  has clear requirements and needs a technical plan before implementation
-  begins. Use after /define or on any issue with a behavior inventory or
-  clear "How it works" narrative. Use when the user says "design this",
-  "how should we build this", or "plan the implementation". DO NOT use
-  when requirements are still unclear or the issue lacks enough detail.
+  Design the implementation for a defined feature. Use after /define or
+  on any issue with a behavior inventory or clear "How it works"
+  narrative. Use when the user says "design this", "how should we build
+  this", or "plan the implementation". DO NOT use when requirements are
+  still unclear or the issue lacks enough detail.
 argument-hint: <github-issue-url-or-number>
 user-invocable: true
 ---
@@ -44,11 +43,13 @@ user which issue to work on.
 
 ## Phase 2: Explore the Codebase
 
-Understand the terrain before proposing anything. Use Read, Grep, Glob.
+Map the codebase before proposing anything. Use Read, Grep, Glob.
 
 1. **The closest existing feature.** Find the most similar feature and
    study its model, controller, views, tests, and patterns end to end.
-   This is your template.
+   This is your template. If no similar feature exists, study 2-3
+   existing models/controllers/routes to establish the project's
+   conventions.
 2. **Conventions** — Enums, concerns, controller structure, test patterns.
    Follow what exists.
 3. **Integration points** — How existing code handles the external
@@ -66,20 +67,22 @@ Name what you searched for and where.
 Spawn two sub-agent reviews. Provide each with the behavior inventory,
 your list of relevant files, and the constraints from the issue.
 
-**Pass 1 — Convention review.** Load `checklists/convention-review.md`.
-Assess whether there's one obvious idiomatic approach or genuinely
-different ways to do this. Flag code smells or structural issues that
-should be addressed first.
+**Pass 1 — Direction assessment.** Assess whether the behavior inventory
+maps to one obvious idiomatic approach or multiple viable approaches.
+Flag any codebase constraints that would block the obvious approach.
+Flag code smells or structural issues that should be addressed first.
 
-**Pass 2 — Adversarial review.** Load `checklists/adversarial-review.md`.
-Challenge the architectural direction. Is there a simpler approach? Does
-any proposed model/table/abstraction need to exist? What assumptions
-haven't been verified? What will break?
+**Pass 2 — Adversarial review.** Load `checklists/adversarial-review.md`
+from the skills repository root. Challenge the architectural direction.
+Is there a simpler approach? Does any proposed model/table/abstraction
+need to exist? What assumptions haven't been verified? What will break?
 
 Spawn sub-agents. Do not perform reviews inline.
 
-Present your exploration alongside both assessments. Highlight where
-you agree and disagree.
+Present your codebase findings to the user alongside both assessments.
+Highlight where you agree and disagree. If findings change the scope or
+reveal unexpected constraints, wait for acknowledgment before proceeding
+to Phase 3.
 
 ## Phase 3: Propose the Approach
 
@@ -91,7 +94,9 @@ Present it directly. Don't manufacture alternatives — a strawman
 comparison wastes time and insults the reader. Go deep:
 
 - The approach and why it's clearly right
-- What alternatives you considered and why they don't work
+- The runner-up approach and why it doesn't work (one sentence minimum
+  — this prevents rationalizing a single approach when alternatives
+  exist)
 - Risks or open questions
 
 ### When there are genuinely different options
@@ -106,6 +111,8 @@ Give a clear recommendation.
 
 **Gate: Present the approach (or recommendation among options) to the
 user. Do not proceed to Phase 4 until the user confirms the direction.**
+If the user rejects the approach, ask what direction they prefer. Return
+to Phase 3 with the new constraints.
 
 ## Phase 4: Detail the Plan
 
@@ -189,15 +196,21 @@ Spawn two sub-agent reviews. Provide each with:
 - Technical decisions with rationale
 - Key existing code patterns being followed (include file paths)
 
-**Pass 1 — Convention review.** Load `checklists/convention-review.md`.
-Evaluate simplicity (can anything be eliminated?), capability ordering
-(does each deliver a real capability? is the ordering logical?), pattern
-compliance, completeness (every behavior accounted for?).
+**Pass 1 — Convention review.** Load `checklists/convention-review.md`
+from the skills repository root. The convention checklist is designed
+for code diffs. When applying it to an implementation plan, evaluate
+only: responsibility placement (is logic in the right layer?), DRY (is
+anything duplicated across capabilities?), idiom conformance (do
+proposed patterns match codebase conventions?). Skip code-specific items
+(git diff, Hotwire IDs, tenant scoping). Also evaluate: simplicity (can
+anything be eliminated?), capability ordering (does each deliver a real
+capability? is the ordering logical?), completeness (every behavior
+accounted for?).
 
-**Pass 2 — Adversarial review.** Load `checklists/adversarial-review.md`.
-Challenge: What's overcomplicated? What assumptions are wrong? What will
-break during implementation? What's missing? What contradicts the spec
-or CLAUDE.md?
+**Pass 2 — Adversarial review.** Load `checklists/adversarial-review.md`
+from the skills repository root. Challenge: What's overcomplicated?
+What assumptions are wrong? What will break during implementation?
+What's missing? What contradicts the spec or CLAUDE.md?
 
 Spawn sub-agents. Do not perform reviews inline.
 
@@ -212,9 +225,9 @@ Spawn sub-agents. Do not perform reviews inline.
 - Second-guesses product decisions from the issue
 
 Present all review findings to the user. For each finding, state whether
-you incorporated it or rejected it and why. Findings above low severity
-that you chose to reject must be presented to the user for their
-decision.
+you incorporated it or rejected it and why. Findings categorized as
+"This is wrong" or "This is missing" that you chose to reject must be
+presented to the user for their decision.
 
 If the review reveals the overall approach is wrong (not just details),
 return to Phase 3 rather than patching.
@@ -229,14 +242,22 @@ Present the complete implementation plan:
 - Implementation notes
 - Testing strategy
 
+Verify: could someone implement this feature from the issue alone,
+without the conversation?
+
 Do not proceed to Phase 7 until the user explicitly approves. A response
 presenting the plan must end without any Phase 7 actions.
 
 ## Phase 7: Update the Issue
 
-Once approved, append the implementation plan to the GitHub issue using
-`gh issue edit`. Use the template in `assets/plan-template.md` for
-structure.
+Once approved, add the implementation plan to the GitHub issue. Use the
+template in `assets/plan-template.md` for structure.
+
+Fetch the existing issue body with `gh issue view --json body -q .body`.
+If the issue already has an `## Implementation Plan` section, the new
+plan replaces it. Otherwise, concatenate the plan below the existing
+content with a `---` separator. Write the combined content with
+`gh issue edit --body`.
 
 Share the updated issue URL.
 
@@ -264,7 +285,4 @@ not write from degraded context.
   re-litigate product decisions already made in the issue.
 - Follow existing patterns. The codebase is the style guide.
 - Behaviors drive capabilities. Never decompose by architectural layer.
-- Ask questions freely. Surface uncertainties early.
 - Be opinionated. Recommend a direction. Defer to the user's judgment.
-- The issue must stand alone. The updated issue should be clear enough
-  for /execute to implement without the original conversation.

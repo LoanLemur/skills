@@ -14,8 +14,7 @@ user-invocable: true
 
 # Execute
 
-Implement a feature end-to-end from a GitHub issue. Work commit by
-commit, review each commit independently, and maintain clean git history.
+Input: a GitHub issue with an approved implementation plan. Output: commits on a feature branch.
 
 ## Input
 
@@ -34,31 +33,39 @@ user which issue to implement.
    - The **implementation notes** — patterns, state transitions, details
    - The **testing strategy** — where the design anticipated non-trivial logic
    - Any **outstanding questions** needing resolution
+
+   If the issue has no `## Implementation Plan` section or no ordered
+   capability list, stop. Tell the user: "This issue has no
+   implementation plan. Run /design first."
 3. If there are outstanding questions or ambiguities, ask the user
    before proceeding. Do not guess at unresolved decisions.
 4. **Design completeness check.** Cross-reference the design ("How it
    works") against the capability list. Extract every distinct behavior
    — each user interaction, state transition, or external integration.
-   Verify each is covered by a capability. If the issue includes a
-   behavior inventory, use it as the checklist. If not, construct one
-   from the design narrative.
+   If the issue includes a `### Behavior traceability` section, use it
+   as the checklist. If not, construct one from the design narrative.
 
    If any behavior has no corresponding capability, stop. Ask the user
    whether to add it, defer it, or confirm it's already covered.
 5. Present a summary to the user:
-   - The behavior inventory (numbered)
+   - The behavior inventory (numbered), in format
+     `N. [Behavior] → Capability M`
    - The capability ordering (with behavior mapping)
    - Any gaps found
    - Wait for confirmation before proceeding.
 
 ## Phase 2: Setup
 
-1. Create a feature branch off `main`:
+1. First verify `git status` shows a clean working tree. If the branch
+   already exists (e.g., resuming work), check it out instead of
+   creating it.
+2. Create a feature branch off `main`:
    ```
    git checkout main && git pull && git checkout -b {branch-name}
    ```
-   Use the branch name the user specifies, or ask.
-2. Confirm the branch is clean and ready.
+   Default branch name: `feat/{issue-number}-{slug-from-title}`. Use
+   the user's preferred name if they specify one.
+3. Confirm the branch is clean and ready.
 
 ## Phase 3: Execute — Commit by Commit
 
@@ -90,7 +97,8 @@ closer to the code and determine commit boundaries per CLAUDE.md
 conventions. You may discover a planned capability should be two or
 three commits — typically because it mixes a refactor with a feature.
 More commits (if each is atomic) is always correct. Split without
-asking. Comment on the issue to document the deviation.
+asking. Document the split with an issue comment at the time of the
+first sub-commit (Phase 3e handles this).
 
 Only include code this commit uses. Factory traits, model methods, and
 helper code arrive in the commit where they are first called. Do not
@@ -108,23 +116,31 @@ code obviously does.
 ### 3b. Verify
 
 Before committing, verify:
-- Run relevant specs
+- Run specs for files touched in this commit. If unsure which specs
+  cover affected code paths, run the full suite.
 - If a migration was added, ensure it succeeds
 - Lint and type checks pass (if automated via hooks, confirm no errors)
 
 ### 3c. Review
 
-Spawn two sub-agent reviews. Each gets fresh context — the agent that
-wrote the code cannot evaluate it.
+Spawn two sub-agents:
 
-Provide each reviewer with:
-- The planned commit description from the issue
-- What capability this commit delivers
-- Instruction to run `git diff` to see the current changes
-- For commits 4+, also provide the cumulative diff: `git diff main...HEAD`
-  with framing: "The uncommitted `git diff` is what you are reviewing.
-  The cumulative diff is ONLY for cross-commit consistency (naming,
-  patterns, authorization). Findings should be about the current commit."
+**Sub-agent 1 (Convention).** Provide: the planned commit description,
+the capability being delivered, the relevant section of the issue's
+design narrative (so the reviewer can check design intent, not just code
+quality), instruction to run `git diff`, and
+`checklists/convention-review.md` from the skills repository root.
+Include the structural prompt.
+
+**Sub-agent 2 (Adversarial).** Provide: the same context as sub-agent 1,
+but with `checklists/adversarial-review.md` from the skills repository
+root instead. Include the structural prompt.
+
+Starting from the 4th commit on this branch, also provide both agents
+with `git diff main...HEAD` for cross-commit consistency, with framing:
+"The uncommitted `git diff` is what you are reviewing. The cumulative
+diff is ONLY for cross-commit consistency (naming, patterns,
+authorization). Findings should be about the current commit."
 
 **Structural prompt (include in both reviews):**
 "Before reviewing code quality, answer two structural questions:
@@ -132,10 +148,6 @@ Provide each reviewer with:
 refactor mixed with a feature)? If so, recommend splitting.
 (2) For every new file added or pattern replaced, grep for references
 to the old file/pattern. Flag any files that should be deleted."
-
-**Pass 1 — Convention review.** Load `checklists/convention-review.md`.
-
-**Pass 2 — Adversarial review.** Load `checklists/adversarial-review.md`.
 
 Spawn sub-agents. Do not perform reviews inline.
 
@@ -150,7 +162,7 @@ Spawn sub-agents. Do not perform reviews inline.
 - Adds complexity not justified by a concrete defect
 - Deviates from the agreed design in the issue
 
-If you make changes based on feedback, re-run verification before
+If you make changes based on feedback, re-run verification (3b) before
 committing.
 
 ### 3d. Commit
@@ -158,11 +170,11 @@ committing.
 Stage and commit following CLAUDE.md commit conventions. Use HEREDOC
 for the message.
 
-### 3e. Check Alignment
+### 3e. Document Deviations
 
 After committing, verify alignment with the issue's plan:
 - Does the commit match what was planned?
-- Were any deviations necessary?
+- Were any deviations necessary (including capability splits)?
 
 If a deviation was needed, comment on the GitHub issue explaining what
 changed and why. Leave the issue body untouched — comments make it easy
@@ -174,11 +186,11 @@ gh issue comment {issue-number} --body "..."
 
 ### 3f. Context Management
 
-After every 3-4 commits, or when the session has been running
-extensively, compact the conversation. The implementation must be
-accurate — do not write code from degraded context. If context feels
-polluted after debugging, `/clear` and restart the current commit
-with a fresh prompt referencing the issue and git log.
+After every 3-4 commits, run `/compact` to compress context while
+preserving state. If context feels degraded after debugging (you're
+making mistakes or repeating yourself), run `/clear` and restart the
+current commit with a fresh prompt that references the issue number
+and `git log main..HEAD --oneline`.
 
 ### 3g. Repeat
 
@@ -197,7 +209,7 @@ After all planned commits are complete:
 4. Verify the history is clean — each commit is atomic, complete,
    coherent.
 5. **Final-state review.** Run `git diff main...HEAD` and spawn two
-   reviewers focused ONLY on cross-cutting concerns per-commit reviews
+   sub-agents focused ONLY on cross-cutting concerns per-commit reviews
    cannot catch:
    - Naming consistency across files
    - Authorization/scoping patterns applied inconsistently
@@ -205,8 +217,12 @@ After all planned commits are complete:
    - Patterns established early that drift in later commits
    - Error handling or API call conventions used inconsistently
 
-   **Pass 1 — Convention review.** Load `checklists/convention-review.md`.
-   **Pass 2 — Adversarial review.** Load `checklists/adversarial-review.md`.
+   **Sub-agent 1 (Convention).** Provide: `git diff main...HEAD`, the
+   issue's design narrative, and `checklists/convention-review.md` from
+   the skills repository root.
+
+   **Sub-agent 2 (Adversarial).** Provide: same context, but with
+   `checklists/adversarial-review.md` from the skills repository root.
 
    Spawn sub-agents. Do not perform reviews inline.
 
@@ -222,6 +238,9 @@ Present a summary to the user:
 - Test status
 
 Do NOT push or create a PR unless the user asks.
+
+Suggest next step: "Run `/review {issue-number}` for final review
+before merging."
 
 ## Handling Mistakes
 
@@ -245,15 +264,13 @@ have been pushed, ask the user before force-pushing.
 - **Scope creep during implementation:** If you discover work not in the
   plan, comment on the issue. Do not implement unplanned work without
   user approval.
+- **Merge conflict with main:** If main has advanced since branching,
+  rebase before continuing: `git rebase main`. On conflict, stop and
+  present the conflict to the user.
 
 ## Rules
 
 - Follow the plan, but trust the design. The capability list is your
   roadmap, but "How it works" is the source of truth for behavior.
-- One commit at a time. Don't batch work across multiple capabilities.
-- Review every commit. Convention + adversarial. No exceptions.
-- Clean history matters. Fix mistakes with fixup+rebase, not "oops"
-  commits.
 - Comments over edits. Deviations go as issue comments. Never edit the
   issue body.
-- Ask when stuck. If something doesn't work in practice, ask the user.

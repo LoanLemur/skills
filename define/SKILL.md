@@ -1,7 +1,6 @@
 ---
 name: define
 description: >-
-  Define a feature or change as a product spec before implementation.
   Use when the user describes a new feature idea, requests new
   functionality, or needs to scope a change that touches multiple files
   or actors. Use when someone says "I want to add...", "we need...", or
@@ -32,8 +31,9 @@ Not every request needs the full process. Assess scope first:
 - **Trivial** (typo, config, one-line fix): Tell the user this doesn't
   need /define. Stop.
 - **Small** (1-2 files, clear behavior, single actor): Skip to Phase 3.
-  Write a one-paragraph problem statement, 3-5 acceptance criteria, and
-  a short behavior inventory. Then Phase 5.
+  Write a one-paragraph problem statement and a short behavior inventory
+  (3-5 items). Then Phase 5, then Phase 7. Skip Phase 6 — small changes
+  don't justify sub-agent review overhead.
 - **Medium+** (3+ files, multiple behaviors or actors, external systems,
   state transitions, edge cases): Full process below.
 
@@ -46,7 +46,7 @@ classification.
 
 ## Phase 1: Understand the Problem
 
-Nail down the fundamentals:
+Answer these five questions:
 
 1. **What** is being asked for? One sentence.
 2. **Why** does this need to exist? What problem does it solve?
@@ -55,8 +55,8 @@ Nail down the fundamentals:
 5. **What is explicitly out of scope?**
 
 Present these five answers to the user for confirmation before
-proceeding. Ask questions freely throughout — ambiguity resolved now
-saves redesign later.
+proceeding. Ask clarifying questions about missing facts. State product
+conclusions as recommendations.
 
 ### Challenge the premise
 
@@ -185,23 +185,25 @@ behavior must eventually have a commit.
 
 Spawn two sub-agent reviews. Provide each with the complete draft
 (problem, goal, solution, decisions, constraints, edge cases, behavior
-inventory). Load the shared review checklists from the parent
-`checklists/` directory.
+inventory).
 
-**Pass 1 — Spec review.** Load `checklists/spec-review.md`.
-Evaluate: Is the behavior inventory complete? Are key decisions
-well-reasoned? Are constraints specific enough? Is there enough
-information to design an implementation?
+**Pass 1 — Spec review.** Load the `checklists/spec-review.md` file
+from the skills repository root. Evaluate: Is the behavior inventory
+complete? Are key decisions well-reasoned? Are constraints specific
+enough? Is there enough information to design an implementation?
 
-**Pass 2 — Adversarial review.** Load `checklists/adversarial-review.md`.
-Challenge: Is the scope too large? What assumptions are unstated? What
-edge cases are missing? What happens if a key decision is wrong? Is
-anything being built that nobody asked for?
+**Pass 2 — Adversarial review.** Load the `checklists/adversarial-review.md`
+file from the skills repository root. Challenge: Is the scope too large?
+What assumptions are unstated? What edge cases are missing? What happens
+if a key decision is wrong? Is anything being built that nobody asked for?
 
 Present all review findings to the user. For each finding, state whether
 you incorporated it or rejected it and why. Findings rated above low
 severity that you chose to reject must be explicitly presented to the
 user for their decision — do not reject substantive findings unilaterally.
+
+Unresolved questions from reviews go into the Outstanding Questions
+section of the issue.
 
 Spawn sub-agents for reviews. Do not perform reviews inline in the
 current context — the point is independent evaluation.
@@ -211,6 +213,7 @@ current context — the point is independent evaluation.
 ### Completion check
 
 Before presenting to the user, re-read the original request ($ARGUMENTS).
+If $ARGUMENTS is empty, use the feature description from the conversation.
 Present a visible mapping:
 
 ```
@@ -248,7 +251,7 @@ After creating, share the URL.
   or file lists. That's /design's job.
 - Capture what was rejected. Rejected alternatives and constraints are
   as valuable as the chosen direction.
-- Ask questions freely. Ambiguity resolved now saves redesign later.
-- Be opinionated. Recommend a direction. Defer to the user's judgment.
+- If the user asks to skip phases, Phase 2 (codebase scan) cannot be
+  skipped — it reveals constraints that change scope.
 - The issue must stand alone. Someone running /design on this issue
   should have everything they need without the original conversation.

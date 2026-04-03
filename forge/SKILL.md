@@ -1,7 +1,6 @@
 ---
 name: forge
 description: >-
-  Build, test, and iterate on agentic skills using a Ralph-style loop.
   Use when creating a new skill or enhancing an existing one. Takes a skill
   spec and acceptance criteria, then iterates with fresh context until all
   tests pass. DO NOT use for non-skill work.
@@ -11,24 +10,32 @@ user-invocable: true
 
 # Forge
 
-Build or enhance a skill through automated iteration. Each cycle: draft →
-test → evaluate → improve. Fresh context per test. Only surface to the
-user when all tests pass or you're stuck.
+Produce a tested SKILL.md (and supporting files) for the skill named in
+$ARGUMENTS.
 
 ## Input
 
-$ARGUMENTS
+$ARGUMENTS — a skill name.
 
-This should be a skill name. Find the skill's entry in
-`docs/28-skill-map.md` for its spec. If an existing version
-exists in `~/.claude/skills/{name}/SKILL.md`, read it as the starting
-point.
+If the argument is `forge`, stop. Forge cannot forge itself. Surface this
+to the user.
+
+Find the skill's entry in `docs/28-skill-map.md` for its spec. If the
+skill name has no entry in `docs/28-skill-map.md`, stop. Ask the user to
+provide the spec, acceptance criteria, and goal directly.
+
+Check whether `~/.claude/skills/{name}/SKILL.md` exists. Record whether
+this is a **new skill** or an **enhancement** — Phase 3 Test C and Phase
+4 depend on this.
+
+If enhancing, read the existing version as the starting point.
 
 Also read:
 - `docs/00-synthesis.md` — principles and pipeline
 - `docs/08-agent-skills-standard.md` — the SKILL.md format spec
 - `docs/24-skill-writing-craft.md` — how to write skills well
-- The relevant craft analysis docs (docs/20-25) for patterns
+- Read docs in the order specified by `docs/00-synthesis.md` Part 11 —
+  prioritize those marked MUST READ
 
 ## Phase 1: Understand the Skill
 
@@ -44,8 +51,8 @@ Before writing anything:
 4. Read the relevant research docs for this specific skill. The skill map
    and synthesis reference which docs matter.
 
-State back what you understand: what this skill does, what its acceptance
-criteria are, and your approach. Do not proceed without this.
+State your understanding internally (what this skill does, acceptance
+criteria, approach). Proceed to Phase 2 — do not surface to the user yet.
 
 ## Phase 2: Draft the Skill
 
@@ -101,11 +108,11 @@ the agent that wrote the skill cannot evaluate it.
 
 Spawn a sub-agent. Provide it with:
 - The skill's SKILL.md (full content)
-- The instruction: "You are testing this skill for loopholes. Read the
-  instructions and find ways to: skip steps, produce shallow output,
-  declare done prematurely, avoid the hard parts, generate verbose
-  filler, or violate the spirit of the instructions while following the
-  letter. Report every loophole you find. If the skill is tight, say so."
+- The instruction: "Read these instructions and find every way an agent
+  could: skip steps, produce shallow output, declare done prematurely,
+  avoid the hard parts, generate verbose filler, or follow the letter
+  while violating the spirit. Report each loophole. If the skill is
+  tight, say so."
 
 Record findings.
 
@@ -122,9 +129,11 @@ Spawn a sub-agent. Provide it with:
 
 Record findings.
 
-### Test C: Comparison (for enhanced skills only)
+### Test C: Comparison (enhanced skills only)
 
-If an existing version of the skill exists, spawn a sub-agent. Provide:
+Run this test only if Phase 1 recorded this as an enhancement.
+
+Spawn a sub-agent. Provide:
 - The old SKILL.md
 - The new SKILL.md
 - The instruction: "Compare these two versions. For each difference,
@@ -137,14 +146,17 @@ Record findings.
 ## Phase 4: Evaluate
 
 Read all test results. Categorize:
-- **PASS** — All three tests report no issues
+
+- **PASS** — All applicable tests report no issues. For new skills:
+  Tests A and B. For enhanced skills: Tests A, B, and C. Proceed to
+  Phase 6.
 - **FAIL with clear fixes** — Tests identified specific problems with
   obvious solutions. Proceed to Phase 5.
 - **FAIL with unclear fixes** — Tests identified problems but the
   solution isn't obvious. Surface to the user with findings and ask
   for direction.
-- **STUCK** — Multiple iteration cycles haven't resolved the issues.
-  Surface to the user with the full history.
+- **STUCK** — 3 full Phase 3→5 cycles completed without reaching PASS.
+  Surface to the user with the full iteration history.
 
 ## Phase 5: Improve
 
@@ -153,8 +165,7 @@ Fix the issues identified in Phase 4. For each fix:
 - State what you're changing
 - State why this fixes it
 
-Then return to Phase 3 (test again). This is the Ralph loop — iterate
-until PASS or STUCK.
+Then return to Phase 3 (test again).
 
 Never weaken a test to make the skill pass. If a test seems wrong,
 surface to the user.
@@ -166,10 +177,11 @@ When all tests pass:
 1. Present the final skill to the user:
    - The SKILL.md (full content)
    - Any supporting files (references/, assets/)
-   - Test results summary (what was tested, what passed)
-   - Iteration history (how many cycles, what was fixed)
+   - Test results: PASS/FAIL per test with one sentence of evidence
+   - Iteration history: one line per cycle — what changed and why
 2. Ask the user to review and approve.
-3. On approval, write the files to the target location.
+3. On approval, write to `~/.claude/skills/{name}/`, creating the
+   directory if needed.
 
 ## Acceptance Criteria (for skills built by /forge)
 
@@ -207,9 +219,6 @@ Every skill must:
 
 ## Rules
 
-- Never weaken tests to make a skill pass.
-- Never declare a skill done without running all three tests.
+- If sub-agent spawning is unavailable, stop and surface to the user.
+  Self-evaluation defeats the purpose of fresh context.
 - Surface to the user when stuck, not when "almost done."
-- The iteration loop is the point — more cycles is expected, not failure.
-- Fresh context for every test. The agent that wrote the skill cannot
-  evaluate it.

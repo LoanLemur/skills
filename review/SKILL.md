@@ -1,12 +1,11 @@
 ---
 name: review
 description: >-
-  Interactive commit-by-commit code review with history surgery. Use when
-  a feature branch is ready for review before merging. Use when the user
-  says "review this", "look at these commits", or "check this branch".
-  Also serves as the final verification gate — cross-references the
-  original spec to catch completion bias. DO NOT use during implementation
-  (per-commit reviews are built into /execute).
+  Use when a feature branch is ready for review before merging. Use when
+  the user says "review this", "look at these commits", or "check this
+  branch". Also serves as the final verification gate — cross-references
+  the original spec to catch completion bias. DO NOT use during
+  implementation (per-commit reviews are built into /execute).
 argument-hint: <issue-or-pr-number>
 user-invocable: true
 ---
@@ -34,7 +33,10 @@ Optional. Accepts any of:
   description, and linked issue. If the PR links to an issue, fetch
   that too for behavior inventory context.
 - **Nothing** — Review the current branch's commits vs main. No
-  external context; the code speaks for itself.
+  external context; the code speaks for itself. Without an issue,
+  behavior coverage cannot be checked. If the branch name contains an
+  issue number (e.g., `feat/608-slug`), fetch that issue automatically
+  for coverage context.
 
 Detection: if the argument is a URL, use the path to distinguish
 `/issues/` from `/pull/`. If it is a bare number, check whether a PR
@@ -43,17 +45,10 @@ number matches, treat it as a PR. Otherwise treat it as an issue.
 
 ## Review Philosophy
 
-Complexity is the enemy. Every finding must pass these filters:
-
-1. **Should this code exist at all?** Question necessity before quality.
-2. **Could this be simpler?** Fewer lines, a Rails built-in, less
-   abstraction.
-3. **Would deleting code improve the design?** Thin wrappers, premature
-   abstractions, unnecessary indirection are liabilities.
-
-Never recommend adding code, abstractions, or error handling unless
-there is a concrete defect. "You could also add X" is not a finding.
-The default action is: simplify, reduce, or leave it alone.
+Every finding must pass: (1) Should this code exist at all? (2) Could
+it be simpler? (3) Would deleting it improve the design? Never
+recommend adding code unless there is a concrete defect. "You could
+also add X" is not a finding.
 
 ## Evaluation Dimensions
 
@@ -200,6 +195,9 @@ Any behaviors not covered by any commit? Any commits that do not map to
 a behavior? This is the primary gate against completion bias — the
 implementation agent may have declared "done" without covering everything.
 
+If the issue includes a `### Capabilities` section, also verify each
+planned capability has at least one covering commit.
+
 Present the overview and structural findings. Wait for the reviewer.
 They may want to address structural issues (reorder, split, squash,
 reword) before diving into code-level review. Or they may say "structure
@@ -208,8 +206,9 @@ looks good, let's go commit by commit."
 ## Phase 3: Commit Review
 
 Work through commits sequentially, or jump to a specific commit if the
-reviewer asks. Track which commits have been reviewed and which are
-pending.
+reviewer asks. Maintain a running tracker: after each commit review,
+show `[reviewed] sha1, sha2 | [pending] sha3, sha4`. After history
+surgery, update the list from `git log main..HEAD --oneline`.
 
 When the reviewer asks to revisit an already-reviewed commit (e.g.,
 "go back to commit 3"), clarify intent: are they re-reviewing it, or
@@ -230,9 +229,8 @@ walk through the diff itself — show the actual code in ```diff blocks,
 interleaved with commentary. Findings are anchored to the exact lines
 they reference, not listed separately.
 
-Format: break the diff into logical chunks. After each chunk, add
-commentary — explanation, findings, or a brief positive note. Skip
-chunks that are straightforward and need no comment. Example:
+Break the diff into logical chunks with interleaved commentary. Skip
+chunks that need no comment. Example:
 
 ````
 ```diff
@@ -251,16 +249,10 @@ Good guard — prevents double-charging on retry.
 charge is orphaned. Call Stripe first, then record the result.
 ````
 
-Guidelines for the diff walkthrough:
-
-- Group related lines into logical chunks. Skip chunks that need no
-  comment — clean code flows through without annotation.
-- Explain non-obvious patterns and framework magic inline, as a peer.
-- Evaluate the commit message at the end: accurate subject, imperative,
-  under 50 chars, correct prefix, body explains why not what.
-
-Apply the four evaluation dimensions throughout the walkthrough — they
-are defined above and do not need to be re-enumerated per commit.
+Explain non-obvious patterns and framework magic inline, as a peer.
+Evaluate the commit message at the end: accurate subject, imperative,
+under 50 chars, correct prefix, body explains why not what. Apply
+the four evaluation dimensions throughout.
 
 **Evaluate design decisions against conventions — inline, not after.**
 
@@ -285,13 +277,16 @@ When you encounter a design decision and cannot name the convention it
 follows, that is itself a signal worth flagging.
 
 **Convention evaluation checklist** — apply at the moment of
-description, not in a separate pass:
+description, not in a separate pass. This inline checklist guides the
+walkthrough. The full convention and adversarial checklists are applied
+by sub-agents after the walkthrough.
 
 - **Responsibility** — Does the logic belong where it is? Fat models,
-  skinny controllers. Business logic in models or service objects, not
-  controllers. If a model already has a method that does this, the
-  controller should not reimplement it. Does the controller export ivars
-  the view can reach through an association on another ivar?
+  skinny controllers. Business logic in models, not controllers. Service
+  objects are acceptable only as wrappers around external API boundaries.
+  If a model already has a method that does this, the controller should
+  not reimplement it. Does the controller export ivars the view can
+  reach through an association on another ivar?
 - **DRY** — Is the same concept (method name, calculation,
   responsibility) implemented in more than one place? When two models
   or two files implement the same thing, flag it. Delegation is
@@ -323,10 +318,10 @@ description, not in a separate pass:
 
 - Direct on real issues: "This has a race condition because X"
 - Brief on minor issues: "Nitpick: trailing whitespace on line 42"
-- Positive on good patterns: "Good call using `limits_concurrency`
-  here — prevents double-billing"
-- Curious, not adversarial: "Why X over Y?" not "You should have
-  done Y"
+- Positive on good patterns: "`limits_concurrency` is the right choice
+  here — prevents double-billing on concurrent retries"
+- Curious, not adversarial: "X is simpler than Y because Z — worth
+  switching?" not "You should have done Y"
 - When the commit is clean, say so. Do not manufacture findings.
 
 **Findings are recommendations, not observations.**
@@ -361,10 +356,32 @@ should not have to drag the conclusion out of you.
 
 Do not advance to the next commit until the reviewer signals.
 
+### Sub-agent Review Passes
+
+After the inline walkthrough and findings for each commit, spawn two
+sub-agent reviews. Provide each with the commit diff (`git show {sha}`),
+the behavior this commit delivers, and the issue's design context if
+available.
+
+**Sub-agent 1 (Convention).** Load `checklists/convention-review.md`
+from the skills repository root.
+
+**Sub-agent 2 (Adversarial).** Load `checklists/adversarial-review.md`
+from the skills repository root.
+
+The sub-agents catch what inline review misses due to context
+familiarity. Present their findings alongside yours before waiting for
+the reviewer.
+
 ### Making Changes
 
 When the reviewer agrees something should change, rewrite history
 directly. These are private branches — clean history is the goal.
+
+Before any history surgery, check:
+`git log --oneline origin/main..HEAD 2>/dev/null`. If the branch has
+been pushed to a remote, warn the reviewer before any rebase: "This
+branch has been pushed. Rewriting history will require a force-push."
 
 Available operations:
 
@@ -390,11 +407,12 @@ Record HEAD before any rebase: `old_head=$(git rev-parse HEAD)`
 Resolve conflicts directly. Mechanical conflicts (renames propagating,
 later version clearly correct) resolve without asking. Genuinely
 ambiguous conflicts (competing design choices) — present both options
-to the reviewer.
+to the reviewer. Direct conflict resolution during already-approved
+operations is an exception to the "no changes without agreement" rule.
 
-After rebase, run `git range-diff main $old_head HEAD` to find commits
-with non-trivial content changes. Flag these when reviewing those
-commits.
+After any rebase, run `git range-diff main $old_head HEAD` to verify
+the rewrite didn't alter content in unreviewed commits. Flag commits
+with non-trivial content changes when reviewing them.
 
 **Verify commit messages after every rebase.** Surgery changes content
 but not messages. Reword proactively when content no longer matches.
@@ -422,7 +440,9 @@ mapping to the user.
 sections. Ask: does the branch as a whole achieve the stated goal? The
 behavior inventory may be complete but the goal not met if behaviors
 were interpreted narrowly. This is the final check against the original
-intent, not just the task list.
+intent, not just the task list. If the branch does not achieve the
+stated goal, stop. Present the gap and recommend returning to /execute
+to implement missing work.
 
 **Cross-commit consistency pass.** Look for issues that only become
 visible across the full branch — not within any single commit:
@@ -437,14 +457,13 @@ visible across the full branch — not within any single commit:
 
 ```
 git log main..HEAD --oneline
-bundle exec rubocop --parallel
-bundle exec erb_lint --lint-all
-bundle exec rspec {relevant specs}
 ```
 
-Fix any failures. Fold fixes into the originating commit with
-`--fixup` + `--autosquash`. If a fix touches code reviewed in
-Phase 3, note the change in the summary.
+Run the project's test suite, linter, and type checker. Use commands
+from CLAUDE.md or the project's CI configuration. Fix any failures.
+Fold fixes into the originating commit with `--fixup` + `--autosquash`.
+If a fix touches code reviewed in Phase 3, note the change in the
+summary.
 
 **Summary:**
 
@@ -468,29 +487,12 @@ Phase 3, note the change in the summary.
 
 - **Atomicity is the primary lens.** If commit boundaries are wrong,
   fix structure before reviewing code.
-- **Analyze before presenting.** Form your opinion first, then walk
-  through the code with that opinion baked in.
 - **Evaluate, do not narrate.** Describing code accurately is not
   reviewing it. Cite the convention at the moment of description.
-- **Explain, do not lecture.** Present as a peer, not an authority.
-- **Explain the non-obvious.** Rails magic, framework conventions,
-  and idioms should be made clear.
-- **Evaluate commit messages.** The message is part of the commit's
-  quality.
-- **Wait for the reviewer.** Never advance without their signal.
 - **No changes without agreement.** Discuss findings before acting.
-- **Rewrite history freely.** These are private branches. Clean
-  history is the goal.
-- **Resolve conflicts directly.** Only escalate genuinely ambiguous
-  resolutions.
-- **Do not pile on.** If the code is clean, say so. Manufacturing
-  findings is worse than missing them.
-- **Code is liability.** All code that is not strictly necessary —
-  including tests — is harmful, not neutral. The question is "does
-  this need to exist?" not "does this hurt?"
-- **Recommend, do not observe.** Every finding includes the fix. The
-  reviewer's job is to agree or disagree, not to figure out the
-  solution.
+- **Code is liability.** The question is "does this need to exist?"
+  not "does this hurt?"
+- **Recommend, do not observe.** Every finding includes the fix.
 - **Go to the cleanest answer.** Do not stop at half-measures.
 - **Fresh perspective.** Review as if seeing this code for the first
   time. Do not assume prior reviews caught everything.

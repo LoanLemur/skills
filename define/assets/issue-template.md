@@ -27,6 +27,12 @@ states, transitions, feedback, and notifications.}
 
 {Non-happy-path scenarios and expected behavior.}
 
+## Codebase Context
+
+{Adjacent features, patterns, and constraints discovered during codebase
+exploration. Include only if Phase 2 revealed constraints or patterns
+that would affect /design. Omit this section if nothing notable was found.}
+
 ## Behavior Inventory
 
 {Numbered list. Each behavior is distinct — its own user interaction,
