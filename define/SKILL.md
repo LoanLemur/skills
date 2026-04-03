@@ -147,6 +147,12 @@ Anything that constrains implementation:
 - Things tried before that failed (and why)
 - Dependencies on other features or systems
 
+At minimum, address these scope questions:
+
+- What units/currencies/formats are in scope vs out of scope?
+- What operations are atomic vs allow partial completion?
+- What volume/scale assumptions bound the design?
+
 **Gate: Present the solution narrative and key decisions to the user.
 Do not proceed to Phase 4 until the user confirms the direction.**
 
@@ -157,6 +163,18 @@ Non-happy-path scenarios:
 - What triggers it
 - What the user sees
 - What the system should do
+
+Scan these categories for edge cases specific to this feature:
+
+- **Zero/null inputs** — What if amounts are zero? Empty strings?
+  Missing fields?
+- **Temporal ordering** — What if entities are added or removed after
+  related data exists?
+- **Self-referential states** — What if the same entity appears on both
+  sides of a relationship?
+- **Boundary values** — What happens at exactly 0, 1, or MAX?
+- **Concurrent/partial states** — What if an operation is interrupted
+  halfway?
 
 Focus on edge cases that affect product behavior. Implementation edge
 cases (null handling, retries) are /design's concern.
@@ -249,6 +267,9 @@ After creating, share the URL.
 - Never write code. The only artifact is a GitHub issue.
 - No implementation plans. No data models, column types, commit plans,
   or file lists. That's /design's job.
+- Codebase Context in the issue records patterns and constraints, not
+  file paths or implementation details. Write "uses a nested REST
+  pattern" not "see src/routes/expenses.js".
 - Capture what was rejected. Rejected alternatives and constraints are
   as valuable as the chosen direction.
 - If the user asks to skip phases, Phase 2 (codebase scan) cannot be

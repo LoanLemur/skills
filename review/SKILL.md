@@ -33,10 +33,10 @@ Optional. Accepts any of:
   description, and linked issue. If the PR links to an issue, fetch
   that too for behavior inventory context.
 - **Nothing** — Review the current branch's commits vs main. No
-  external context; the code speaks for itself. Without an issue,
-  behavior coverage cannot be checked. If the branch name contains an
-  issue number (e.g., `feat/608-slug`), fetch that issue automatically
-  for coverage context.
+  external context. Compensate by being more rigorous on edge case
+  audit and internal consistency — without a spec to verify against,
+  the code must defend itself. If the branch name contains an issue
+  number (e.g., `feat/608-slug`), fetch that issue automatically.
 
 Detection: if the argument is a URL, use the path to distinguish
 `/issues/` from `/pull/`. If it is a bare number, check whether a PR
@@ -102,18 +102,14 @@ Only applies when the commit includes tests. If it does:
 - No mocking — this codebase uses real objects and real database calls.
 - Is trivial code being tested? If the implementation is obvious, the
   test adds maintenance burden without confidence.
-- Code is liability, not asset. Tests are code. Tests that do not
-  provide confidence are not neutral — they are harmful. The bar is
-  "does this test need to exist?" not "does this test hurt?"
-- Are tests duplicating language or framework guarantees? A test that
-  verifies Ruby can do integer division, or that Rails validates
-  presence, provides zero confidence. Recommend removal.
-- Are factory traits or test setup front-loaded? Traits should arrive
-  in the commit where they are first used. Traits for untested states
-  are dead code.
+- Tests that do not provide confidence are harmful, not neutral. The
+  bar is "does this test need to exist?"
+- Are tests duplicating language or framework guarantees? Recommend
+  removal.
+- Are factory traits front-loaded? Traits should arrive in the commit
+  where they are first used.
 
-If the commit has no tests, evaluate whether that is correct. Tests
-provide confidence only when the code has non-trivial logic. Obvious
+If the commit has no tests, evaluate whether that is correct. Obvious
 code does not need tests.
 
 ### 4. Security
@@ -125,9 +121,7 @@ Brief if clean. Flag only real vulnerabilities:
 - Injection (SQL, command, XSS)
 - PII exposure in logs, responses, or error messages
 - Insecure direct object references
-- Unbounded queries — search, autocomplete, and list endpoints must
-  apply `.limit()` or use `pagy`. Missing limits enable enumeration
-  and performance degradation.
+- Unbounded queries — list endpoints must apply `.limit()` or `pagy`
 
 ## Phase 1: Establish Context
 
@@ -313,6 +307,13 @@ by sub-agents after the walkthrough.
   controller?
 - **Commit purity** — Does the commit mix a refactor with a feature?
   Would it belong in a separate commit?
+
+**Edge case audit** (apply regardless of whether an issue was provided):
+- For every conditional or guard clause: what input triggers the other
+  branch? Is that input possible in production?
+- For every division: can the divisor be zero?
+- For every collection operation: what happens with an empty collection?
+- For every filter/select: what happens when nothing matches?
 
 **Tone: senior co-owner.**
 
