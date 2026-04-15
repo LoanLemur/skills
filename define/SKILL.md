@@ -24,6 +24,23 @@ If the input is too vague to scope ("make it better", "improve
 performance"), stop. State what's missing and ask specific questions.
 Do not guess at requirements.
 
+## Output discipline
+
+The issue is for humans who scan, not readers who parse prose. Every
+section inside the issue obeys these rules:
+
+- Structured bullets, not paragraphs. One takeaway per bullet.
+- Short sentences. Cut filler words.
+- Blank line between findings for parseability.
+- Omit empty sections entirely. No "(none)" filler, no placeholder
+  headers.
+- No preamble ("Here's the design..."), no wrap-up ("In summary...").
+- Numbered lists only where sequence or the Behavior Inventory
+  contract requires.
+
+Self-check before presenting: can a reader scan the whole issue in
+under 60 seconds? If not, cut more.
+
 ## Proportional Ceremony
 
 Not every request needs the full process. Assess scope first:
@@ -113,71 +130,81 @@ constrained.
 
 ## Phase 3: Define the Solution
 
-Walk through the feature from each actor's perspective. Bold headers
-for each phase. Be specific about what the user does, sees, and what
-happens next.
+Write the solution as structured bullets, not narrative. Walk through
+the feature from each actor's perspective:
 
-At each step: feedback on success, failure, and in-progress states.
-Notifications sent, and to whom.
+- One bold header per actor (e.g. `**MERCHANT**`, `**CUSTOMER**`,
+  `**SYSTEM**`).
+- Under each header, 3-6 short bullets. Each bullet names an action
+  and its outcome. Include feedback on success, failure, and
+  in-progress states, plus notifications sent and to whom.
+- Blank line between actor blocks.
 
 Be opinionated. Recommend a direction. Defer to the user's judgment
 when they disagree.
 
-**Length guidance:** Under 500 words for small features, under 1000
-words for medium+. If you need more, the scope is likely too large.
+**Length caps:** Under 200 words for small features, under 400 words
+for medium+. If you need more, the scope is likely too large —
+recommend splitting.
 
 ### Key decisions
 
-For each significant product choice:
+One bullet per product decision. Format:
 
-- **The decision** as a bold statement
-- **Why** this is the right choice
-- **What was considered and rejected** — and why
+- Decision in one short sentence. Rationale in one short sentence.
+  Indented follow-up line names rejected alternatives with a one-phrase
+  reason each.
 
-Product-level decisions only. When a decision has both product and
-technical dimensions, include enough context that /design can make the
-right technical call.
+Example:
+- Stripe Checkout, not custom. PCI scope small, 3DS free.
+  Rejected Elements (still PCI), custom (compliance cost).
+
+Blank line between decisions. Product-level decisions only. When a
+decision has both product and technical dimensions, include enough
+context that /design can make the right technical call.
 
 ### Constraints
 
-Anything that constrains implementation:
+One bullet each. Anything that constrains implementation:
 
 - External API limitations or behaviors
 - Non-obvious business rules
 - Things tried before that failed (and why)
 - Dependencies on other features or systems
 
-At minimum, address these scope questions:
+At minimum, address these scope questions in the bullets:
 
-- What units/currencies/formats are in scope vs out of scope?
-- What operations are atomic vs allow partial completion?
-- What volume/scale assumptions bound the design?
+- Units/currencies/formats in scope vs out of scope
+- Operations atomic vs allow partial completion
+- Volume/scale assumptions bounding the design
 
-**Gate: Present the solution narrative and key decisions to the user.
+Omit the section entirely if nothing applies.
+
+**Gate: Present the solution bullets and key decisions to the user.
 Do not proceed to Phase 4 until the user confirms the direction.**
 
 ## Phase 4: Edge Cases
 
-Non-happy-path scenarios:
+One bullet per edge case. Format: `trigger → outcome`. Keep each to
+one line where possible. Blank line between bullets.
 
-- What triggers it
-- What the user sees
-- What the system should do
+Example:
+- Zero amount → form blocks submit, "Amount must be > 0". No record.
+- SMS delivery fails → request stays Pending, merchant sees delivery error.
 
 Scan these categories for edge cases specific to this feature:
 
-- **Zero/null inputs** — What if amounts are zero? Empty strings?
-  Missing fields?
-- **Temporal ordering** — What if entities are added or removed after
-  related data exists?
-- **Self-referential states** — What if the same entity appears on both
-  sides of a relationship?
-- **Boundary values** — What happens at exactly 0, 1, or MAX?
-- **Concurrent/partial states** — What if an operation is interrupted
-  halfway?
+- **Zero/null inputs** — Zero amounts, empty strings, missing fields.
+- **Temporal ordering** — Entities added or removed after related data
+  exists.
+- **Self-referential states** — Same entity on both sides of a
+  relationship.
+- **Boundary values** — Exactly 0, 1, or MAX.
+- **Concurrent/partial states** — Operation interrupted halfway.
 
 Focus on edge cases that affect product behavior. Implementation edge
-cases (null handling, retries) are /design's concern.
+cases (null handling, retries) are /design's concern. Omit the section
+entirely if no product-visible edge cases exist.
 
 ## Phase 5: Behavior Inventory
 

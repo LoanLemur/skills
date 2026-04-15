@@ -2,46 +2,62 @@
 
 ### Approach
 
-{Chosen approach and why. Alternatives considered and why they were
-rejected. If only one viable approach, state what was evaluated.}
+- {Chosen approach in one line.} {One-line why.}
+- Rejected {alternative}. {One-line why.}
 
-### Data model changes
+{Omit the rejected line only if no alternative was evaluated. Max 3 bullets.}
 
-{Tables, columns, types, constraints. For each table, why it exists.
-"None" if no schema changes.}
+### Data model
+
+| Table | Columns | Notes |
+|-------|---------|-------|
+| {name} | {col:type NOT NULL, col:type, fk→other} | {why it exists, one line} |
+
+{Omit section if no schema changes. No narrative.}
 
 ### Technical decisions
 
-{For each significant choice: the decision (bold), why, what was
-considered and why it's worse.}
+- **{Decision}.** {Why, one line.}
+  Rejected {alt} ({one-line reason}).
+
+- **{Decision}.** {Why, one line.}
+  Rejected {alt} ({one-line reason}).
+
+{One blank line between decisions. No "Considered:" preamble.}
 
 ### Capabilities
 
-{Ordered list. Each capability is the smallest independently valuable
-unit — one thing a user or system can do after it ships that they
-couldn't before.}
+1. {Capability name}
+   - Adds: {what ships}
+   - Pattern: {existing file/feature to mirror}
+   - Nuance: {only if non-obvious — else omit}
 
-```
-N. {Capability name}
-   {What this adds, patterns it follows, key nuances.}
-```
+2. {Capability name}
+   - Adds: {what ships}
+   - Pattern: {existing file/feature to mirror}
+
+{Blank line between capabilities. Omit bullets that don't apply. Annotate `[design-identified]` if not in original inventory.}
 
 ### Behavior traceability
 
-{Map every behavior from the issue's inventory to capabilities.}
-
-```
-Behavior 1 → Capability N
-Behavior 2 → Capabilities N, M
-```
+| Behavior | Capability |
+|----------|------------|
+| {Behavior 1} | {N} |
+| {Behavior 2} | {N, M} |
+| {Behavior 3} | Deferred → #{issue} |
 
 ### Implementation notes
 
-{Cross-cutting patterns and conventions. State transitions, calculation
-details, conditional validations, cross-references to related issues.}
+- {Cross-cutting pattern, one line}
+- {State transition: A → B on {trigger}}
+- {Calculation: {formula}}
+- {Related: #{issue}}
+
+{Omit section if no cross-cutting notes.}
 
 ### Testing strategy
 
-{Where non-trivial logic warrants tests. Name the specific calculation
-or edge case, not "test the model." Default: most code doesn't need
-tests.}
+- {Capability N}: {specific calculation or edge case}
+- {Capability M}: {specific calculation or edge case}
+
+{Omit section if nothing warrants tests. Never write "test the model."}

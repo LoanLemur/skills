@@ -17,6 +17,18 @@ clear requirements. Output is an implementation plan — data model,
 technical decisions, and an ordered list of capabilities — appended to
 the issue.
 
+## Output discipline
+
+Every section the agent writes to the issue follows these rules:
+
+- Scannable in 60 seconds. Structured bullets, not prose.
+- One takeaway per bullet. Short sentences.
+- Blank line between items in the same section.
+- Omit empty sections entirely. Do not write "None" headers.
+- No preamble. No wrap-up. No restating the problem — it's in the issue.
+- Max one short quote from source material per section.
+- Cut any bullet that restates what the issue already says.
+
 ## Input
 
 $ARGUMENTS
@@ -59,8 +71,8 @@ Map the codebase before proposing anything. Use Read, Grep, Glob.
    this feature can be built cleanly? If so, that refactor is the first
    capability.
 
-Report specific findings: list the files, models, and patterns found.
-Name what you searched for and where.
+Report findings as bulleted lines to the user: `{what} — {file:line}`.
+No paragraphs. One finding per bullet.
 
 ### Architectural direction review
 
@@ -79,10 +91,9 @@ need to exist? What assumptions haven't been verified? What will break?
 
 Spawn sub-agents. Do not perform reviews inline.
 
-Present your codebase findings to the user alongside both assessments.
-Highlight where you agree and disagree. If findings change the scope or
-reveal unexpected constraints, wait for acknowledgment before proceeding
-to Phase 3.
+Present codebase findings and both assessments as structured bullets.
+Mark agreement/disagreement inline: `[agree]`, `[disagree: reason]`. If
+findings change the scope, wait for acknowledgment before Phase 3.
 
 ## Phase 3: Propose the Approach
 
@@ -90,24 +101,23 @@ How this phase plays out depends on what Phase 2 revealed.
 
 ### When there's a clear best approach
 
-Present it directly. Don't manufacture alternatives — a strawman
-comparison wastes time and insults the reader. Go deep:
+Present it as bullets. No manufactured alternatives:
 
-- The approach and why it's clearly right
-- The runner-up approach and why it doesn't work (one sentence minimum
-  — this prevents rationalizing a single approach when alternatives
-  exist)
-- Risks or open questions
+- **Approach**: {one line}
+- **Why**: {one line}
+- **Runner-up**: {approach} — {one-line reason it fails}
+- **Risks**: {bullet each, omit section if none}
 
 ### When there are genuinely different options
 
-Present the competing approaches. For each:
+For each option, max 50 words:
 
-- How it works (models, controllers, data flow)
-- What it makes easy vs hard
-- Concrete tradeoffs (not abstract "flexibility" or "scalability")
+- **Option A**: {how it works in one sentence}
+  - Easy: {what}
+  - Hard: {what}
+  - Tradeoff: {concrete, not "flexibility"}
 
-Give a clear recommendation.
+End with one line: `Recommend: {option} — {why}`.
 
 **Gate: Present the approach (or recommendation among options) to the
 user. Do not proceed to Phase 4 until the user confirms the direction.**
@@ -118,21 +128,23 @@ to Phase 3 with the new constraints.
 
 Only begin this phase after the user confirms the approach from Phase 3.
 
+Build each section to match `assets/plan-template.md` exactly. Structure
+below describes the discipline for each section — not prose rules.
+
 ### Data model
 
-Propose tables, columns, types, and constraints. Null constraints,
-defaults, foreign keys, indexes. For each table, justify why it exists.
-Always ask: can this be a column on an existing model instead of a new
-table?
+Table per row. Columns list as `col:type NOT NULL, col:type, fk→other`.
+One-line "why" per table. Always ask: can this be a column on an
+existing model instead of a new table?
 
 ### Technical decisions
 
-For each significant implementation choice:
+Per decision, max 3 lines:
 
-- **The decision** as a bold statement
-- **Why** — what makes this the simplest correct approach
-- **What was considered** — and why it's worse
+- **{Decision}.** {Why, one line.}
+  Rejected {alt} ({one-line reason}).
 
+No "Considered:" preamble. No prose. Blank line between decisions.
 Always ask: "Can this same value be delivered more simply?"
 
 ### Capabilities
@@ -141,51 +153,47 @@ List the capabilities to implement, in order. Each capability is the
 smallest independently valuable unit — one thing a user or system can
 do after it ships that they couldn't before.
 
-Err on the side of too granular, not too grouped. If a capability
-contains multiple distinct user actions (create, view, list, edit,
-delete), each action that delivers independent value is its own
-capability. The executing agent determines commit boundaries per
-CLAUDE.md conventions — this list is a starting point, not a contract.
+Err on the side of too granular, not too grouped. The executing agent
+determines commit boundaries per CLAUDE.md — this list is a starting
+point, not a contract.
 
-For each capability:
+Per capability, structured bullets:
 
 ```
 N. {Capability name}
-   {What this adds, patterns it follows, key nuances.}
+   - Adds: {what ships, one line}
+   - Pattern: {file/feature to mirror}
+   - Nuance: {only if non-obvious}
 ```
 
-If you discover behaviors the issue's inventory missed (e.g., technical
-behaviors like webhook handling, background jobs), add them with
-annotation that they were identified during design.
+Omit `Nuance` when obvious. Blank line between capabilities.
 
-Propose concrete names for models, controllers, columns, and routes.
-Naming reveals design problems early.
+If you discover behaviors the issue's inventory missed (webhook
+handling, background jobs), add them tagged `[design-identified]`.
+
+Propose concrete names for models, controllers, columns, routes.
 
 ### Behavior traceability
 
-Map every behavior from the issue's inventory to one or more capability
-numbers:
+Table form:
 
-```
-Behavior 1 → Capability N
-Behavior 2 → Capabilities N, M
-Behavior 3 → Deferred (cross-reference issue)
-```
+| Behavior | Capability |
+|----------|------------|
+| {behavior} | {N} or {N, M} or `Deferred → #issue` |
 
 If any behavior has no capability, add one or flag it to the user.
 
 ### Implementation notes
 
-Bullet points covering patterns and conventions that apply across
-capabilities: patterns to follow, state transitions, calculation
-details, conditional validations, cross-references to related issues.
+One-line bullets only. Patterns, state transitions, calculations,
+conditional validations, cross-refs. Omit section if nothing
+cross-cutting. Never restate the spec.
 
 ### Testing strategy
 
-Identify which capabilities have non-trivial logic where tests provide
-confidence. Default: most code doesn't need tests. Be precise — name
-the specific calculation or edge case, not "test the model." The
-executing agent makes final testing decisions based on actual code.
+One-line bullets: `{Capability N}: {specific calculation or edge case}`.
+Default: most code doesn't need tests. Name the concrete case, not
+"test the model." Omit section if nothing warrants tests.
 
 ## Phase 5: Design Review
 
@@ -224,23 +232,17 @@ Spawn sub-agents. Do not perform reviews inline.
 - Increases complexity without addressing a concrete defect
 - Second-guesses product decisions from the issue
 
-Present all review findings to the user. For each finding, state whether
-you incorporated it or rejected it and why. Findings categorized as
-"This is wrong" or "This is missing" that you chose to reject must be
-presented to the user for their decision.
+Present review findings as bullets: `{finding} — {incorporated|rejected: reason}`.
+Findings categorized "wrong" or "missing" that you reject go to the
+user for decision.
 
 If the review reveals the overall approach is wrong (not just details),
 return to Phase 3 rather than patching.
 
 ## Phase 6: Finalize with User
 
-Present the complete implementation plan:
-
-- Data model
-- Technical decisions (noting any the reviews challenged)
-- Capability ordering with behavior mapping
-- Implementation notes
-- Testing strategy
+Present the complete plan using the template sections. Structured bullets
+only. No prose summaries.
 
 Verify: could someone implement this feature from the issue alone,
 without the conversation?
@@ -251,7 +253,12 @@ presenting the plan must end without any Phase 7 actions.
 ## Phase 7: Update the Issue
 
 Once approved, add the implementation plan to the GitHub issue. Use the
-template in `assets/plan-template.md` for structure.
+template in `assets/plan-template.md` verbatim for structure. Every
+section must follow the output discipline above.
+
+Before writing: re-read each section and cut any bullet that restates
+what the issue already says. Omit empty sections entirely — do not
+leave `None` placeholders.
 
 Fetch the existing issue body with `gh issue view --json body -q .body`.
 If the issue already has an `## Implementation Plan` section, the new
@@ -286,3 +293,5 @@ not write from degraded context.
 - Follow existing patterns. The codebase is the style guide.
 - Behaviors drive capabilities. Never decompose by architectural layer.
 - Be opinionated. Recommend a direction. Defer to the user's judgment.
+- Structured bullets over prose in every written artifact.
+- Omit empty sections. Never write "None" headers.

@@ -150,350 +150,393 @@ These inform Phase 2's structural review.
 
 ## Phase 2: Overview
 
-Present the branch as a narrative — not a list of commits, but a story.
-What does this branch accomplish? What is the arc? Group related commits
-into chapters if the branch is long.
+Output format — terse, scannable. No flowing prose.
 
-Then evaluate the **commit structure** before looking at any code:
+```
+Branch: {N} commits, {X} files, +{Y}/-{Z}
 
-**Commit narrative** — Read `git log main..HEAD --oneline`. Do the
-subjects alone tell a coherent story? Could someone understand what this
-branch does from the one-line log? Flag narrative-level issues:
-- Subjects that do not form a coherent story when read in sequence
-- Subjects that describe layers instead of capabilities
+{one-line arc — what this branch delivers, under 20 words}
+
+
+COMMITS
+
+- {sha} {subject}
+- {sha} {subject}
+
+
+STRUCTURE
+
+- {finding} — {atomicity | ordering | narrative}
+- {finding} — {atomicity | ordering | narrative}
+
+
+COVERAGE
+
+- Behavior 1 → {sha}
+- Behavior 2 → {sha}, {sha}
+- Behavior 3 → NOT COVERED
+```
+
+Rules:
+- Omit `STRUCTURE` section entirely if clean.
+- Omit `COVERAGE` section if no issue was provided.
+- One line per item. No paragraphs.
+- Blank line between items in multi-item sections.
+
+Structural findings to flag (one line each):
+- Subjects that do not tell a coherent story in sequence
+- Subjects describing layers, not capabilities
 - Wrong conventional commit prefixes
 - Vague or inaccurate subjects
+- Layer-only commits, multi-capability commits
+- Ordering: anything depends on a later commit
+- Behaviors with no covering commit (completion-bias gate)
 
-Individual message quality (body content, imperative tense, length) is
-evaluated per-commit in Phase 3.
+Individual message quality (body, imperative tense) is evaluated in
+Phase 3 per commit.
 
-**Atomicity scan** — Does each commit deliver exactly one capability?
-Flag layer-only commits, multi-capability commits, or commits that
-should be merged with adjacent ones.
-
-**Ordering** — Would the narrative be clearer if commits were
-reordered? Does anything depend on something introduced in a later
-commit?
-
-**Behavior coverage (completion-bias gate)** — If an issue was provided,
-cross-reference the behavior inventory against the commit list. Present
-a visible mapping:
-
-```
-Behavior 1 → Commit {sha short}
-Behavior 2 → Commits {sha}, {sha}
-Behavior 3 → NOT COVERED
-```
-
-Any behaviors not covered by any commit? Any commits that do not map to
-a behavior? This is the primary gate against completion bias — the
-implementation agent may have declared "done" without covering everything.
-
-If the issue includes a `### Capabilities` section, also verify each
-planned capability has at least one covering commit.
-
-Present the overview and structural findings. Wait for the reviewer.
-They may want to address structural issues (reorder, split, squash,
-reword) before diving into code-level review. Or they may say "structure
-looks good, let's go commit by commit."
+Present the overview. Wait for the reviewer. They may want to address
+structural issues before commit-by-commit review, or say "structure
+looks good, let's go."
 
 ## Phase 3: Commit Review
 
 Work through commits sequentially, or jump to a specific commit if the
-reviewer asks. Maintain a running tracker: after each commit review,
-show `[reviewed] sha1, sha2 | [pending] sha3, sha4`. After history
-surgery, update the list from `git log main..HEAD --oneline`.
+reviewer asks. Maintain a running tracker: after each commit, show
+`[reviewed] sha1, sha2 | [pending] sha3, sha4`. After history surgery,
+update from `git log main..HEAD --oneline`.
 
-When the reviewer asks to revisit an already-reviewed commit (e.g.,
-"go back to commit 3"), clarify intent: are they re-reviewing it, or
-do they want to make a specific change? If re-reviewing, present the
-commit fresh. If making a change, go directly to the action.
+When the reviewer asks to revisit an already-reviewed commit ("go back
+to commit 3"), clarify intent: re-review, or specific change? If
+re-reviewing, present fresh. If making a change, act directly.
 
 ### For each commit
 
 **Analyze first, then present.** Read the full diff and surrounding
-code. Form an opinion before presenting anything. The walkthrough should
-have the analysis already baked in — not "here is the diff, and here is
-what I think" but a single annotated narrative.
+code. Form an opinion before writing anything. Walk inline, evaluate
+against conventions *at the moment you see the code*, and collect
+findings into a severity-grouped block at the end.
 
-**Present as an annotated diff walkthrough:**
-
-Open with what capability this commit delivers (one sentence). Then
-walk through the diff itself — show the actual code in ```diff blocks,
-interleaved with commentary. Findings are anchored to the exact lines
-they reference, not listed separately.
-
-Break the diff into logical chunks with interleaved commentary. Skip
-chunks that need no comment. Example:
+**Output format:**
 
 ````
+{sha} {subject}
+
+Delivers: {one-line capability — what someone can do now}
+
+
+DIFF
+
 ```diff
-+  def charge!
-+    return false unless pending?
+{chunk 1}
 ```
-
-Good guard — prevents double-charging on retry.
+- L{n}: {one-line annotation pointing at a line}
+- L{n}: {one-line annotation}
 
 ```diff
-+    stripe_charge = Stripe::Charge.create(amount: amount_cents)
-+    update!(status: :completed, stripe_charge_id: stripe_charge.id)
+{chunk 2}
 ```
+- L{n}: {one-line annotation}
 
-**State safety**: If `update!` raises after Stripe charges, the
-charge is orphaned. Call Stripe first, then record the result.
+
+FINDINGS
+
+WRONG
+
+- {Tag}: {finding} — {fix in same line, under 20 words}
+
+- {Tag}: {finding} — {fix}
+
+
+OVERCOMPLICATED
+
+- {Tag}: {finding} — {cut/merge/replace}
+
+
+STATE-SAFETY
+
+- {finding} — {fix}
+
+
+TESTS
+
+- {finding} — {fix}
+
+
+MESSAGE
+
+- {subject issue | body issue | prefix issue}
 ````
 
-Explain non-obvious patterns and framework magic inline, as a peer.
-Evaluate the commit message at the end: accurate subject, imperative,
-under 50 chars, correct prefix, body explains why not what. Apply
-the four evaluation dimensions throughout.
+Rules:
+- Skip diff chunks that need no annotation.
+- Annotations are one line. Point at a line number. No paragraphs.
+- `DIFF` section exists only to anchor annotations. If no chunk
+  needs anchoring, drop the section.
+- `FINDINGS` severity sections: `WRONG`, `OVERCOMPLICATED`,
+  `STATE-SAFETY`, `TESTS`, `MESSAGE`. **Omit any section with no
+  findings.** Do not print empty headers.
+- Each finding: one line, under 20 words, includes the fix.
+- Blank line between findings. Two blank lines before section headers.
+- Tags in `WRONG` / `OVERCOMPLICATED`: `Wrong`, `Missing`, `DRY`,
+  `Responsibility`, `Dependency`, `Idiom`, `Purity`, `Edge-case`.
+- No hedging: "not a big deal", "minor nit", "I wouldn't insist",
+  "you could" are forbidden. If it is worth raising, recommend the
+  fix. If not, drop it.
+- No leading questions. State the answer.
+- When the commit is clean, output only the header line and
+  `Clean.` on the next line.
 
-**Evaluate design decisions against conventions — inline, not after.**
+**Evaluation checklist — apply silently while reading the diff:**
 
-The failure mode is narration bias — accurately describing what code
-does without judging whether it should do it that way. Comprehension
-masquerades as approval. "I see why they did this" silently becomes
-"this is fine."
+- **Responsibility** — Fat models, skinny controllers. Logic belongs on
+  the noun. Service objects only wrap external APIs.
+- **DRY** — Same concept in two places → duplication finding.
+- **Dependency** — Reaching into associations/APIs for data already
+  local → flag.
+- **State safety** — Crash leaves data inconsistent? Orphan state?
+  Temporal coupling?
+- **Error provenance** — Trace rescues/nil-checks to source. Fix at
+  origin, not handler.
+- **Idiom** — Rails built-ins, RESTful controllers, declarative
+  patterns. Non-CRUD actions are suspect.
+- **Purity** — Refactor mixed with feature → atomicity violation.
+- **Edge cases** — Every conditional: what triggers the else? Every
+  division: can divisor be zero? Every collection op: empty case?
+  Every filter: no match case?
 
-Guard against this: at the moment you describe a design decision in
-the walkthrough, cite the CLAUDE.md convention it follows or violates.
-The walkthrough is the input to evaluation, not the output of the
-review. Examples:
-
-- "The job orchestrates the charge" → fat models says logic belongs
-  on the model. That is a finding.
-- "Creates the record as pending, then calls the API" → what state
-  is this record in if the API call crashes?
-- "Extracts a partial and adds the edit form" → refactors mixed
-  with features is an atomicity violation.
-
-When you encounter a design decision and cannot name the convention it
-follows, that is itself a signal worth flagging.
-
-**Convention evaluation checklist** — apply at the moment of
-description, not in a separate pass. This inline checklist guides the
-walkthrough. The full convention and adversarial checklists are applied
-by sub-agents after the walkthrough.
-
-- **Responsibility** — Does the logic belong where it is? Fat models,
-  skinny controllers. Business logic in models, not controllers. Service
-  objects are acceptable only as wrappers around external API boundaries.
-  If a model already has a method that does this, the controller should
-  not reimplement it. Does the controller export ivars the view can
-  reach through an association on another ivar?
-- **DRY** — Is the same concept (method name, calculation,
-  responsibility) implemented in more than one place? When two models
-  or two files implement the same thing, flag it. Delegation is
-  usually the fix. Frame it as duplication, not as a correctness
-  question.
-- **Dependency** — When code reaches into an association, API, or
-  external service, ask: is this value already available locally? A
-  method that calls `subscription.status` when the model has a
-  `status` column creates unnecessary coupling and potentially an
-  API call. Prefer local state over reaching into dependencies.
-- **State safety** — Would a crash leave data inconsistent? Are there
-  crash-safe defaults? Does a public method silently depend on another
-  method being called first (temporal/sequential coupling)?
-- **Error provenance** — When you see error handling (rescue, nil-
-  check, guard clause), trace it to its source. Where does the error
-  originate? Would changing the error at the source (e.g., raising a
-  typed exception instead of returning nil) eliminate all these
-  downstream handlers? The individual handler may be fine; the pattern
-  may be wrong.
-- **Idiom conformance** — Does code use Rails built-ins? RESTful
-  controllers? Declarative over imperative? `head :ok` not
-  `render json: nil`. Any non-CRUD controller action is suspect — can
-  it be a parameter to an existing CRUD action or a new sub-resource
-  controller?
-- **Commit purity** — Does the commit mix a refactor with a feature?
-  Would it belong in a separate commit?
-
-**Edge case audit** (apply regardless of whether an issue was provided):
-- For every conditional or guard clause: what input triggers the other
-  branch? Is that input possible in production?
-- For every division: can the divisor be zero?
-- For every collection operation: what happens with an empty collection?
-- For every filter/select: what happens when nothing matches?
-
-**Tone: senior co-owner.**
-
-- Direct on real issues: "This has a race condition because X"
-- Brief on minor issues: "Nitpick: trailing whitespace on line 42"
-- Positive on good patterns: "`limits_concurrency` is the right choice
-  here — prevents double-billing on concurrent retries"
-- Curious, not adversarial: "X is simpler than Y because Z — worth
-  switching?" not "You should have done Y"
-- When the commit is clean, say so. Do not manufacture findings.
-
-**Findings are recommendations, not observations.**
-
-State findings as recommendations with the best fix, not as open
-questions for the reviewer to solve. "This should use BigDecimal —
-float multiplication loses precision on currency" not "you could use
-BigDecimal here if you wanted." The reviewer can disagree, but they
-should not have to drag the conclusion out of you.
-
-- Go to the cleanest answer the first time. If a test assertion
-  should be simpler, recommend the simplest correct version — do not
-  stop at an intermediate improvement that still has the same problem.
-- Do not soften real findings. "Not a big deal" and "I wouldn't
-  insist" signal that you do not believe your own analysis. If it is
-  worth raising, recommend the fix. If it is not worth raising, do
-  not mention it.
-- Never end a finding with "Next?" or "Shall we move on?" — the
-  reviewer decides when to advance. Presenting a finding and
-  immediately offering to skip it undermines the finding.
-- Leading questions are a cop-out. "Is this more complex than it
-  needs to be?" puts the analytical burden on the reviewer. State
-  the answer: "This is more complex than it needs to be — X would
-  be simpler because Y."
-
-**Wait for the reviewer.** They may:
-
-- Ask questions about the code or decisions
-- Agree with a finding and ask you to fix it
-- Disagree with a finding and explain why
-- Say "looks good, next"
-
-Do not advance to the next commit until the reviewer signals.
+Cite the violated convention in the finding (`Responsibility:`,
+`DRY:`, etc.). If you describe a design decision and cannot name the
+convention it follows or violates, that itself is a signal — flag it.
 
 ### Sub-agent Review Passes
 
-After the inline walkthrough and findings for each commit, spawn two
-sub-agent reviews. Provide each with the commit diff (`git show {sha}`),
-the behavior this commit delivers, and the issue's design context if
-available.
+After inline findings, spawn two sub-agents in parallel. Each gets
+the commit diff (`git show {sha}`), the behavior delivered, and
+issue design context if available.
 
-**Sub-agent 1 (Convention).** Load `checklists/convention-review.md`
-from the skills repository root.
+- **Sub-agent 1 (Convention).** Loads
+  `checklists/convention-review.md`.
+- **Sub-agent 2 (Adversarial).** Loads
+  `checklists/adversarial-review.md`.
 
-**Sub-agent 2 (Adversarial).** Load `checklists/adversarial-review.md`
-from the skills repository root.
+Sub-agent output format requirement (embed in their prompts):
 
-The sub-agents catch what inline review misses due to context
-familiarity. Present their findings alongside yours before waiting for
-the reviewer.
+```
+WRONG
+- {Tag}: {finding under 20 words with fix}
+
+OVERCOMPLICATED
+- {Tag}: {finding with fix}
+
+STATE-SAFETY
+- {finding with fix}
+
+Omit empty sections. One line per finding. No prose.
+```
+
+Verify every specific claim (file:line, API name, quoted text) before
+including it. Drop unverifiable claims. Never deflate a verified
+WRONG to a softer category.
+
+**Merge sub-agent findings into the same severity-grouped block as
+inline findings — do not present them as separate prose sections.**
+Tag the source inline when it matters:
+
+```
+FINDINGS (inline + sub-agents)
+
+WRONG
+
+- State-safety: `update!` after Stripe charge → orphan on raise.
+  Call Stripe first, record after. — adversarial
+
+- DRY: `fee_cents` duplicates `Merchant#fee_cents`. Delegate. —
+  convention
+
+
+OVERCOMPLICATED
+
+- Cut: `format_amount` wraps `number_to_currency` with no change.
+  Call it directly. — inline
+```
+
+Source tags: `— inline`, `— convention`, `— adversarial`, or a
+combination (`— inline, convention`) when multiple agents surface the
+same issue. Merge duplicates, don't repeat.
+
+**Tone.**
+
+- State findings as recommendations with the fix.
+- Clean commits get one word: `Clean.` — do not manufacture findings.
+- No sycophancy: no "great", "nice", "good catch", "I agree."
+- Positive acknowledgment of good patterns is allowed only when the
+  pattern is non-obvious and worth naming. One line, no superlatives:
+  `limits_concurrency here prevents double-billing on retries.`
+- No narration: "I see why they did this" → cut.
+- No wrap-up sentences: "Overall this commit looks solid" → cut.
+- No "Next?" or "Shall we move on?" — reviewer advances.
+
+**Wait for the reviewer.** They may:
+- Ask questions
+- Agree and ask you to fix
+- Disagree and explain
+- Say "next"
+
+Do not advance until the reviewer signals.
 
 ### Making Changes
 
 When the reviewer agrees something should change, rewrite history
 directly. These are private branches — clean history is the goal.
 
-Before any history surgery, check:
-`git log --oneline origin/main..HEAD 2>/dev/null`. If the branch has
-been pushed to a remote, warn the reviewer before any rebase: "This
-branch has been pushed. Rewriting history will require a force-push."
+Before any history surgery: `git log --oneline origin/main..HEAD
+2>/dev/null`. If pushed, warn: "This branch has been pushed.
+Rewriting history will require a force-push."
 
-Available operations:
+Operations:
 
-- **Fixup** — Fold a small fix into an earlier commit (`--fixup` +
-  `--autosquash`)
-- **Reword** — Fix a commit message (`GIT_SEQUENCE_EDITOR` +
-  `GIT_EDITOR`)
-- **Squash** — Combine commits (`reset --soft` for adjacent,
-  `GIT_SEQUENCE_EDITOR` for non-adjacent)
-- **Split** — Break one commit into multiple (mark as `edit`, reset,
-  selectively re-commit)
-- **Reorder** — Change commit sequence (`GIT_SEQUENCE_EDITOR` script)
-- **Drop** — Remove a commit entirely
+- **Fixup** — `--fixup` + `--autosquash`
+- **Reword** — `GIT_SEQUENCE_EDITOR` + `GIT_EDITOR`
+- **Squash** — `reset --soft` (adjacent) or `GIT_SEQUENCE_EDITOR`
+  (non-adjacent)
+- **Split** — mark `edit`, reset, selectively re-commit
+- **Reorder** — `GIT_SEQUENCE_EDITOR` script
+- **Drop** — remove entirely
 
-All operations use `GIT_SEQUENCE_EDITOR` and `GIT_EDITOR` to control
-`git rebase -i` non-interactively. On macOS, `sed -i` requires an
-empty string argument (`sed -i ''`).
+All operations use `GIT_SEQUENCE_EDITOR` and `GIT_EDITOR` for
+non-interactive `git rebase -i`. On macOS, `sed -i ''`.
 
 ### Handling Conflicts
 
 Record HEAD before any rebase: `old_head=$(git rev-parse HEAD)`
 
-Resolve conflicts directly. Mechanical conflicts (renames propagating,
-later version clearly correct) resolve without asking. Genuinely
-ambiguous conflicts (competing design choices) — present both options
-to the reviewer. Direct conflict resolution during already-approved
-operations is an exception to the "no changes without agreement" rule.
+Resolve mechanical conflicts directly (renames propagating, later
+version clearly correct). Present ambiguous conflicts (competing
+design choices) to the reviewer.
 
-After any rebase, run `git range-diff main $old_head HEAD` to verify
-the rewrite didn't alter content in unreviewed commits. Flag commits
+After any rebase: `git range-diff main $old_head HEAD`. Flag commits
 with non-trivial content changes when reviewing them.
 
-**Verify commit messages after every rebase.** Surgery changes content
-but not messages. Reword proactively when content no longer matches.
+**Verify commit messages after every rebase.** Surgery changes
+content but not messages. Reword proactively when they drift.
 
-**Trace defects to their origin commit.** Fix where introduced, not
-where noticed. Use `git log --oneline main..HEAD -- {file}` to trace.
+**Trace defects to their origin commit.** Fix where introduced.
+`git log --oneline main..HEAD -- {file}` to trace.
 
 ## Phase 4: Wrap-up
 
-After all commits have been reviewed:
-
-**Final narrative check.** Re-read `git log main..HEAD --oneline`.
-History surgery during Phase 3 — splits, squashes, rewords, reorders
-— may have changed the arc. Apply the same evaluation as Phase 2: do
-the subjects form a coherent story when read in sequence? Are prefixes
-still correct? Reword if not.
-
-**Behavior coverage re-check.** If an issue was provided with a
-behavior inventory, re-run the mapping from Phase 2 against the final
-commit list. Squashes or drops during Phase 3 may have removed coverage.
-If any behavior is no longer addressed, flag it. Present the updated
-mapping to the user.
-
-**Goal-level verification.** Re-read the issue's Problem and Goal
-sections. Ask: does the branch as a whole achieve the stated goal? The
-behavior inventory may be complete but the goal not met if behaviors
-were interpreted narrowly. This is the final check against the original
-intent, not just the task list. If the branch does not achieve the
-stated goal, stop. Present the gap and recommend returning to /execute
-to implement missing work.
-
-**Cross-commit consistency pass.** Look for issues that only become
-visible across the full branch — not within any single commit:
-
-- Patterns established early that drift or contradict in later commits
-- Naming conventions introduced but not followed consistently
-- Duplication across commits that suggests a missing shared abstraction
-- Authorization, error handling, or API call conventions used
-  inconsistently across files
-
-**Final state:**
+After all commits have been reviewed, output:
 
 ```
-git log main..HEAD --oneline
+FINAL LOG
+
+{output of git log main..HEAD --oneline}
+
+
+CHANGES
+
+- {fixup | reword | split | squash | drop | reorder}: {sha} — {what}
+- {fixup | reword | split | squash | drop | reorder}: {sha} — {what}
+
+
+COVERAGE (re-check)
+
+- Behavior 1 → {sha}
+- Behavior 2 → {sha}
+- Behavior 3 → NOT COVERED {flag}
+
+
+GOAL
+
+- {met | not met} — {one-line reason if not met}
+
+
+CROSS-COMMIT
+
+- {finding} — {pattern drift | naming | duplication | inconsistency}
+
+
+OPEN
+
+- {follow-up}
+
+
+CHECKS
+
+- tests: {pass | fail — N failures}
+- lint: {pass | fail}
+- types: {pass | fail}
 ```
 
-Run the project's test suite, linter, and type checker. Use commands
-from CLAUDE.md or the project's CI configuration. Fix any failures.
-Fold fixes into the originating commit with `--fixup` + `--autosquash`.
-If a fix touches code reviewed in Phase 3, note the change in the
-summary.
+Rules:
+- Omit any section with no entries. If `CHANGES` is empty because
+  the branch was clean, drop the section.
+- `GOAL` section only appears if an issue was provided. "Met" is
+  enough — no explanation needed.
+- `COVERAGE` section only appears if an issue was provided.
+- If `GOAL` is `not met`, stop. Recommend returning to `/execute`.
+- Run the project's test suite, linter, type checker from CLAUDE.md
+  or CI config. Fix failures. Fold fixes with `--fixup` +
+  `--autosquash`. Note any such fix under `CHANGES`.
 
-**Summary:**
+**Narrative re-check.** Re-read `git log main..HEAD --oneline`.
+History surgery may have changed the arc. Apply Phase 2 structural
+evaluation. Reword if needed — note under `CHANGES`.
 
-- The final commit log — the story the branch now tells
-- Changes made during review (fixups, rewords, reorders, splits,
-  squashes, drops)
-- Any open items or follow-ups noted during review
-- Test and lint status
+**Cross-commit pass.** Scan for issues only visible across the
+branch:
+- Patterns established early that drift later
+- Naming introduced but not followed consistently
+- Duplication across commits suggesting a missing abstraction
+- Authorization / error handling / API call conventions used
+  inconsistently
+
+One line per finding. Omit section if clean.
 
 ## Failure Modes
 
-- **No commits on branch vs main:** Stop. Confirm the branch and base.
-- **Issue/PR not found:** Proceed without external context. The code
-  speaks for itself — but note that behavior coverage cannot be checked.
-- **Unrecoverable rebase failure:** `git rebase --abort`, report what
-  happened, let the reviewer decide next steps.
-- **Uncommitted changes on branch:** Stop. Ask the reviewer to commit
-  or stash before starting.
+- **No commits on branch vs main:** Stop. Confirm branch and base.
+- **Issue/PR not found:** Proceed without external context. Note
+  that behavior coverage cannot be checked.
+- **Unrecoverable rebase failure:** `git rebase --abort`, report,
+  let reviewer decide.
+- **Uncommitted changes on branch:** Stop. Ask reviewer to commit
+  or stash.
 
 ## Rules
 
-- **Atomicity is the primary lens.** If commit boundaries are wrong,
-  fix structure before reviewing code.
-- **Evaluate, do not narrate.** Describing code accurately is not
-  reviewing it. Cite the convention at the moment of description.
-- **No changes without agreement.** Discuss findings before acting.
-- **Code is liability.** The question is "does this need to exist?"
-  not "does this hurt?"
+- **Atomicity is the primary lens.** Fix structure before reviewing
+  code.
+- **Evaluate, do not narrate.** Cite the convention at the moment
+  of description.
+- **No changes without agreement.** Discuss before acting.
+- **Code is liability.** "Does this need to exist?" not "does this
+  hurt?"
 - **Recommend, do not observe.** Every finding includes the fix.
-- **Go to the cleanest answer.** Do not stop at half-measures.
-- **Fresh perspective.** Review as if seeing this code for the first
-  time. Do not assume prior reviews caught everything.
+- **Go to the cleanest answer.** No half-measures.
+- **Fresh perspective.** Review as if first time.
+
+## Output Discipline
+
+Applies to every phase's output.
+
+- **One finding per bullet.** No paragraphs.
+- **Under 20 words per finding.** Includes the fix.
+- **Blank line between findings.** Two blank lines before section
+  headers. Scannability is the point.
+- **Omit empty sections entirely.** Never print a header with nothing
+  under it. Never write "No findings" under a section — drop the
+  section.
+- **Clean commits get one word: `Clean.`** Do not manufacture
+  findings to fill space.
+- **No preamble, no wrap-up.** No "Here is my review of commit X",
+  no "Overall this looks solid", no "Let me know if you want to
+  discuss." Start with the finding. End when findings end.
+- **No hedging.** Forbidden: "might", "could be", "perhaps",
+  "consider", "not a big deal", "minor nit", "I wouldn't insist",
+  "worth discussing."
+- **No leading questions.** State the answer.
+- **Short sentences.** Fragments acceptable when unambiguous.
+- **Per-commit review fits on one screen** (roughly 40 lines). If
+  it doesn't, you are narrating. Cut.
